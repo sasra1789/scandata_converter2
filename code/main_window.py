@@ -34,6 +34,7 @@ class MainWindow(QWidget):
         # ==== 아래쪽: 액션 버튼 ====
         self.save_button = QPushButton("Save Excel")
         self.collect_button = QPushButton("Collect")
+        
 
         bottom_layout = QHBoxLayout()
         bottom_layout.addWidget(self.save_button)
@@ -79,7 +80,7 @@ class MainWindow(QWidget):
         # else:
         #     print("❌ 썸네일 파일이 존재하지 않습니다:", data['thumbnail'])
         #     thumb_label.setText("❌")
-        
+
         # Thumbnail
         thumb_label = QLabel()
         thumb_label.setFixedSize(100, 60)

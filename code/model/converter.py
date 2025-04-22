@@ -56,3 +56,43 @@ def generate_mov_thumbnail(mov_path, output_dir):
     except subprocess.CalledProcessError:
         print(f"[에러] 썸네일 생성 실패: {mov_path}")
         return None
+    
+
+def convert_to_mp4(input_path, output_path):
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", input_path,
+        "-c:v", "libx264",
+        "-preset", "fast",
+        "-crf", "23",
+        "-pix_fmt", "yuv420p",
+        output_path
+    ]
+
+    return subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+
+
+def convert_to_webm(input_path, output_path):
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", input_path,
+        "-c:v", "libvpx-vp9",
+        "-b:v", "1M",
+        "-c:a", "libopus",
+        output_path
+    ]
+    print ("webm 변환 성공")
+    return subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+
+def generate_montage(input_path, output_path):
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", input_path,
+        "-vf", "thumbnail,scale=320:180,tile=5x1",
+        "-frames:v", "1",
+        output_path
+    ]
+    print("montage 변환 성공")
+    return subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+
+
