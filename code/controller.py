@@ -6,6 +6,7 @@ from model.scanfile_handler import find_plate_files
 from model.converter import generate_mov_thumbnail, convert_exr_to_jpg_with_ffmpeg,  convert_to_mp4, convert_to_webm, generate_montage_multi
 from model.excel_manager import save_to_csv
 from model.scan_structure import create_plate_structure
+from model.shotgrid_api import connect_to_shotgrid, find_shot, create_version, create_shot
 import shutil
 
 
@@ -27,6 +28,7 @@ class Controller:
         self.main_window.load_button.clicked.connect(self.on_load_files)
         self.main_window.save_button.clicked.connect(self.on_save_excel)
         self.main_window.collect_button.clicked.connect(self.on_collect)
+        self.main_window.sg_upload_button.clicked.connect(self.on_register_all_to_shotgrid)
 
     # 디렉토리 선택하고 path 라벨에 표시
     def on_select_folder(self):
@@ -194,44 +196,27 @@ class Controller:
             else:
                 print(f" {shot} → 변환할 MOV/MP4/EXR 파일이 org 폴더에 없습니다.")
 
-    # 샷그리드 
-    def find_shot(sg, project_name, shot_name):
-        # 1. 프로젝트 찾기
-        project = sg.find_one("Project", [["name", "is", project_name]], ["id"])
-        if not project:
-            print(f"❌ 프로젝트 '{project_name}'를 찾을 수 없습니다.")
-            return None, None
+    # 샷그리드
+    def on_register_all_to_shotgrid(self):
+        sg = connect_to_shotgrid()
+        project_name = "serin_converter"  # 너의 ShotGrid 프로젝트명
 
-        # 2. 샷 찾기
-        shot = sg.find_one("Shot", [
-            ["project", "is", project],
-            ["code", "is", shot_name]
-        ], ["id", "code"])
+        for row in range(self.main_window.table.rowCount()):
+            shot_name = self.main_window.table.item(row, 3).text()
+            version = self.main_window.table.item(row, 4).text()
+            path = self.main_window.table.item(row, 6).text()
 
-        return project, shot
+            # 파일 경로 구성
+            mp4_path = os.path.join(path, "mp4", version, f"{shot_name}_plate_{version}.mp4")
+            thumb_path = os.path.join(path, "montage", version, f"{shot_name}_montage_0001.jpg")
 
-    # 3. 샷그리드 찾기
-    def create_version(sg, project, shot, version_name, mp4_path=None, thumbnail_path=None):
-        data = {
-            "project": project,
-            "entity": shot,
-            "code": version_name,
-            "description": "ScanData Auto Upload",
-        }
+            # 샷 찾기
+            project, shot = find_shot(sg, project_name, shot_name)
+            if not (project and shot):
+                print(f"🔎 샷 '{shot_name}'가 존재하지 않아 자동 생성합니다.")
+                shot = create_shot(sg, project, shot_name)
+                continue
 
-        # 1. Version 엔티티 생성
-        version = sg.create("Version", data)
-        print(f"✅ Version 생성: {version['id']}")
-
-        # 2. 미디어 업로드 (mp4)
-        if mp4_path and os.path.exists(mp4_path):
-            sg.upload("Version", version["id"], mp4_path, field_name="uploaded_movie")
-            print(f"🎞 mp4 업로드 완료: {os.path.basename(mp4_path)}")
-
-        # 3. 썸네일 업로드
-        if thumbnail_path and os.path.exists(thumbnail_path):
-            sg.upload_thumbnail("Version", version["id"], thumbnail_path)
-            print(f"🖼 썸네일 업로드 완료: {os.path.basename(thumbnail_path)}")
-
-        return version
-    
+            # Version 등록
+            print(f"⬆️ 등록 중: {shot_name} / {version}")
+            create_version(sg, project, shot, version, mp4_path, thumb_path)

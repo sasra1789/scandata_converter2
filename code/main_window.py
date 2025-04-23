@@ -40,6 +40,10 @@ class MainWindow(QWidget):
         bottom_layout.addWidget(self.save_button)
         bottom_layout.addWidget(self.collect_button)
 
+        #샷그리드 등록버튼
+        self.sg_upload_button = QPushButton("Register to ShotGrid")
+        bottom_layout.addWidget(self.sg_upload_button)
+
         # ==== 전체 레이아웃 ====
         layout = QVBoxLayout()
         layout.addLayout(path_layout)
