@@ -17,6 +17,8 @@ def find_shot(sg, project_name, shot_name):
     shot = sg.find_one("Shot", [["project", "is", project], ["code", "is", shot_name]], ["id"])
     return project, shot
 
+
+
 # Version 생성 및 업로드
 def create_version(sg, project, shot, version_name, mp4_path=None, thumbnail_path=None):
     data = {

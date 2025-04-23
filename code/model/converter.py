@@ -96,6 +96,25 @@ def generate_montage(input_path, output_path):
     print("montage 변환 성공")
     return subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
 
+# 샷그리드 내에서 썸네일을 montage 폴더에서 찾기
+def find_thumbnail_from_montage(dir_path):
+    """
+    montage 폴더에서 가장 먼저 나오는 jpg를 썸네일로 사용
+    """
+    if not os.path.exists(dir_path):
+        return None
+
+    files = sorted([
+        f for f in os.listdir(dir_path)
+        if f.lower().endswith(".jpg")
+    ])
+    print(f"[찾은 썸네일] {files}") 
+    if not files:
+        print(f"{files} 존재하지 않음!")
+        return None
+        
+
+    return os.path.join(dir_path, files[0])
 
 def generate_montage_multi(input_path, output_dir, basename, interval=10, max_frames=5):
     """

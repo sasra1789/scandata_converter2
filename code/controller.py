@@ -3,7 +3,7 @@
 import os
 from main_window import MainWindow
 from model.scanfile_handler import find_plate_files
-from model.converter import generate_mov_thumbnail, convert_exr_to_jpg_with_ffmpeg,  convert_to_mp4, convert_to_webm, generate_montage_multi
+from model.converter import generate_mov_thumbnail, convert_exr_to_jpg_with_ffmpeg,  convert_to_mp4, convert_to_webm, generate_montage_multi, find_thumbnail_from_montage
 from model.excel_manager import save_to_csv
 from model.scan_structure import create_plate_structure
 from model.shotgrid_api import connect_to_shotgrid, find_shot, create_version, create_shot
@@ -200,6 +200,9 @@ class Controller:
     def on_register_all_to_shotgrid(self):
         sg = connect_to_shotgrid()
         project_name = "serin_converter"  # 너의 ShotGrid 프로젝트명
+      
+       
+
 
         for row in range(self.main_window.table.rowCount()):
             shot_name = self.main_window.table.item(row, 3).text()
@@ -214,9 +217,11 @@ class Controller:
             project, shot = find_shot(sg, project_name, shot_name)
             if not (project and shot):
                 print(f"🔎 샷 '{shot_name}'가 존재하지 않아 자동 생성합니다.")
-                shot = create_shot(sg, project, shot_name)
+                shot = create_shot(sg, project, shot_name, thumb_path)
                 continue
 
             # Version 등록
             print(f"⬆️ 등록 중: {shot_name} / {version}")
-            create_version(sg, project, shot, version, mp4_path, thumb_path)
+            montage_dir = os.path.join(path, "montage", version)
+            thumbnail_path = find_thumbnail_from_montage(montage_dir)
+            create_version(sg, project, shot, version, mp4_path, thumbnail_path)
