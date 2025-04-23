@@ -68,18 +68,6 @@ class MainWindow(QWidget):
         checkbox = QCheckBox()
         self.table.setCellWidget(row, 0, checkbox)
 
-        # # 썸네일1
-        # thumb_label = QLabel()
-        # if os.path.exists(data['thumbnail']):
-        #     pixmap = QPixmap(data['thumbnail'])
-        #     if not pixmap.isNull():
-        #         thumb_label.setPixmap(pixmap.scaled(100, 60))
-        #     else:
-        #         print("❌ QPixmap이 null입니다:", data['thumbnail'])
-        #         thumb_label.setText("❌")
-        # else:
-        #     print("❌ 썸네일 파일이 존재하지 않습니다:", data['thumbnail'])
-        #     thumb_label.setText("❌")
 
         # Thumbnail
         thumb_label = QLabel()

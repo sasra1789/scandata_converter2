@@ -3,7 +3,7 @@
 import os
 from main_window import MainWindow
 from model.scanfile_handler import find_plate_files
-from model.converter import generate_mov_thumbnail, convert_exr_to_jpg_with_ffmpeg,  convert_to_mp4, convert_to_webm, generate_montage
+from model.converter import generate_mov_thumbnail, convert_exr_to_jpg_with_ffmpeg,  convert_to_mp4, convert_to_webm, generate_montage_multi
 from model.excel_manager import save_to_csv
 from model.scan_structure import create_plate_structure
 import shutil
@@ -45,6 +45,22 @@ class Controller:
         file_items = find_plate_files(self.folder_path)
 
         for item in file_items:
+            # test3 mov 썸네일 생성
+            if item["type"] == "mov":
+                thumb_path = generate_mov_thumbnail(item["first_frame_path"], self.thumb_cache_dir)
+            else:
+                thumb_path = item["first_frame_path"]  # exr/jpg는 첫 프레임 사용
+
+            table_row_data = {
+                "thumbnail": thumb_path or "",
+                "roll": item["basename"],
+                "shot_name": "샷명_자동생성예정",  # 나중에 자동 태깅 가능
+                "version": "v001",                # 기본 버전
+                "type": item["type"],
+                "path": item["seq_dir"],
+            }
+            pass
+
             # test 2
             if item["type"] == "sequence":
                 thumb_jpg = os.path.join(
@@ -127,17 +143,6 @@ class Controller:
                 plate_type=plate_type,
                 version=version
             )
-            # #원본
-            # # org에 파일 복사
-            # for file in os.listdir(src_path):
-            #     if file.endswith((".exr", ".mov")):
-            #         shutil.copy2(os.path.join(src_path, file), structure["org"])
-
-            # # jpg 저장
-            # if thumb_path and os.path.exists(thumb_path):
-            #     shutil.copy2(thumb_path, os.path.join(structure["jpg"], os.path.basename(thumb_path)))
-
-            # print(f" 폴더 생성 및 복사 완료: {shot}")
 
             # 1. 원본 복사
             for file in os.listdir(src_path):
@@ -150,25 +155,41 @@ class Controller:
 
             # 3. 변환 대상 MOV 찾기
             input_video = None
+    
+
+            # 1. MOV/MP4가 있으면 우선
             for file in os.listdir(structure["org"]):
                 if file.lower().endswith((".mov", ".mp4")):
                     input_video = os.path.join(structure["org"], file)
                     break
 
-            # # org 폴더에서 mov 파일 찾기
-            # for file in os.listdir(structure["org"]):
-            #     if file.endswith(".mov"):
-            #         input_video = os.path.join(structure["org"], file)
-            #         break
-            
+            # 2. 없으면 EXR 첫 프레임을 사용 (단일 프레임 기준)
+            if not input_video:
+                for file in sorted(os.listdir(structure["org"])):
+                    if file.lower().endswith(".exr"):
+                        input_video = os.path.join(structure["org"], file)
+                        break
 
+            # 3. 이제 변환 시작
             if input_video:
+                print(f" 변환 대상 파일: {input_video}")
                 mp4_path = os.path.join(structure["mp4"], f"{shot}_plate_{version}.mp4")
                 webm_path = os.path.join(structure["webm"], f"{shot}_plate_{version}.webm")
                 montage_path = os.path.join(structure["montage"], f"{shot}_plate_{version}.jpg")
 
-                convert_to_mp4(input_video, mp4_path)
-                convert_to_webm(input_video, webm_path)
-                generate_montage(input_video, montage_path)
+                mp4_ok = convert_to_mp4(input_video, mp4_path)
+                webm_ok = convert_to_webm(input_video, webm_path)
+                # montage_ok = generate_montage(input_video, montage_path)
+                montage_ok = generate_montage_multi(
+                    input_video,
+                    output_dir=structure["montage"],
+                    basename=shot,
+                    interval=5,
+                    max_frames=10
+                )
 
-                print(f" 변환 완료: {shot}")
+                print(f"  MP4     : {'✅' if mp4_ok else '❌'} → {mp4_path}")
+                print(f"  WebM    : {'✅' if webm_ok else '❌'} → {webm_path}")
+                print(f"  Montage : {'✅' if montage_ok else '❌'} → {montage_path}")
+            else:
+                print(f" {shot} → 변환할 MOV/MP4/EXR 파일이 org 폴더에 없습니다.")

@@ -88,11 +88,35 @@ def generate_montage(input_path, output_path):
     cmd = [
         "ffmpeg", "-y",
         "-i", input_path,
-        "-vf", "thumbnail,scale=320:180,tile=5x1",
-        "-frames:v", "1",
+        "-vf", "select='not(mod(n\\,5))',scale=320:180",
+        "-frames:v", "5",
         output_path
     ]
+
     print("montage 변환 성공")
     return subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
 
 
+def generate_montage_multi(input_path, output_dir, basename, interval=10, max_frames=5):
+    """
+    영상 or 이미지 시퀀스에서 여러 프레임을 추출하여 개별 jpg로 저장
+    :param input_path: 입력 mov 또는 exr
+    :param output_dir: 저장할 폴더
+    :param basename: 파일 이름 앞에 붙일 샷 이름 등
+    :param interval: 몇 프레임마다 1장 추출할지
+    :param max_frames: 몇 장까지 추출할지 제한
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    output_template = os.path.join(output_dir, f"{basename}_montage_%04d.jpg")
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", input_path,
+        "-vf", f"select='not(mod(n\\,{interval}))',scale=320:180",
+        "-vsync", "vfr",
+        "-frames:v", str(max_frames),
+        output_template
+    ]
+
+    result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return result.returncode == 0
