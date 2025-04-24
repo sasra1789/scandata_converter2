@@ -8,7 +8,7 @@ from model.excel_manager import save_to_excel_with_thumbnails, load_excel_data
 from model.scan_structure import create_plate_structure
 from model.shotgrid_api import connect_to_shotgrid, find_shot, create_version, create_shot, list_projects
 import shutil
-from PySide6.QtWidgets import QInputDialog
+from PySide6.QtWidgets import QInputDialog, QFileDialog, QListView, QTreeView
 
 class Controller:
     def __init__(self):
@@ -32,13 +32,45 @@ class Controller:
         self.main_window.sg_upload_button.clicked.connect(self.on_register_all_to_shotgrid)
         self.main_window.register_excel_button.clicked.connect(self.on_register_from_selected_excel)
 
-    # 디렉토리 선택하고 path 라벨에 표시
+    # # 디렉토리 선택하고 path 라벨에 표시
+    # def on_select_folder(self):
+    #     folder = QFileDialog.getExistingDirectory(self.main_window, "스캔 폴더 선택")
+    #     if folder:
+    #         self.folder_path = folder
+    #         self.main_window.set_path(folder)
+
+
+    # 다중 폴더 선택을 위한 유틸 
+
+    def select_multiple_folders(self,parent=None):
+        dialog = QFileDialog(parent)
+        dialog.setFileMode(QFileDialog.Directory)
+        dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        dialog.setOption(QFileDialog.ShowDirsOnly, True)
+
+        # QListView와 QTreeView를 다중 선택으로 변경
+        for view in dialog.findChildren(QListView):
+            view.setSelectionMode(QListView.ExtendedSelection)
+
+        for view in dialog.findChildren(QTreeView):
+            view.setSelectionMode(QTreeView.ExtendedSelection)
+
+        if dialog.exec():
+            return dialog.selectedFiles()
+        return []
+        
+    
     def on_select_folder(self):
-        from PySide6.QtWidgets import QFileDialog
-        folder = QFileDialog.getExistingDirectory(self.main_window, "스캔 폴더 선택")
-        if folder:
-            self.folder_path = folder
-            self.main_window.set_path(folder)
+        folders = self.select_multiple_folders(self.main_window)
+        if not folders:
+            print("❌ 경로 선택 안됨")
+            return
+
+        self.selected_folders = folders  # 선택된 여러 폴더 저장
+        self.folder_path = folders[0]  # 대표 폴더 하나 라벨로 표시
+        self.main_window.set_path(self.folder_path)
+
+
 
     # scanfile_handler 로 .exr, .mov 파일 읽고, 썸네일 생성 
     def on_load_files(self):
@@ -49,6 +81,7 @@ class Controller:
             return
         
         base_row = self.main_window.table.rowCount()
+
         #  현재 테이블에 이미 올라간 roll 값들 추출
         existing_rolls = set()
         for row in range(base_row):
@@ -57,47 +90,51 @@ class Controller:
                 existing_rolls.add(roll_item.text())
         file_items = find_plate_files(self.folder_path)
 
-        for i, item in enumerate(file_items):
-            if item["basename"] in existing_rolls:
-                continue  #  중복 방지
+        for folder in self.selected_folders:
+            file_items = find_plate_files(folder)
 
-            # test3 mov 썸네일 생성
-            if item["type"] == "mov":
-                thumb_path = generate_mov_thumbnail(item["first_frame_path"], self.thumb_cache_dir)
-            else:
-                thumb_path = item["first_frame_path"]  # exr/jpg는 첫 프레임 사용
+            for i, item in enumerate(file_items):
+                if item["basename"] in existing_rolls:
+                    continue  #  중복 방지
 
-            table_row_data = {
-                "thumbnail": thumb_path or "",
-                "roll": item["basename"],
-                "shot_name": "샷명_자동생성예정",  # 나중에 자동 태깅 가능
-                "version": "v001",                # 기본 버전
-                "type": item["type"],
-                "path": item["seq_dir"],
-            }
-            pass
+                # test3 mov 썸네일 생성
+                if item["type"] == "mov":
+                    thumb_path = generate_mov_thumbnail(item["first_frame_path"], self.thumb_cache_dir)
+                else:
+                    thumb_path = item["first_frame_path"]  # exr/jpg는 첫 프레임 사용
 
-            # test 2
-            if item["type"] == "sequence":
-                thumb_jpg = os.path.join(
-                    self.thumb_cache_dir,
-                    os.path.splitext(os.path.basename(item["first_frame_path"]))[0] + "_thumb.jpg"
-                )
-                if not os.path.exists(thumb_jpg):
-                    convert_exr_to_jpg_with_ffmpeg(item["first_frame_path"], thumb_jpg)
-                thumb_path = thumb_jpg
-            else:
-                thumb_path = generate_mov_thumbnail(item["first_frame_path"], self.thumb_cache_dir)
+                table_row_data = {
+                    "thumbnail": thumb_path or "",
+                    "roll": item["basename"],
+                    "shot_name": "S샷명_SH자동생성예정",  # 나중에 자동 태깅 가능
+                    "version": "v001",                # 기본 버전
+                    "type": item["type"],
+                    "path": item["seq_dir"],
+                }
+                pass
 
-            table_row_data = {
-                "thumbnail": thumb_path or "",
-                "roll": item["basename"],
-                "shot_name": "S샷명을_SH입력해주세요",
-                "version": "v001",
-                "type": item["type"],
-                "path": item["seq_dir"],
-            }
-            self.main_window.add_table_row(table_row_data, base_row + i)
+                # test 2
+                if item["type"] == "sequence":
+                    thumb_jpg = os.path.join(
+                        self.thumb_cache_dir,
+                        os.path.splitext(os.path.basename(item["first_frame_path"]))[0] + "_thumb.jpg"
+                    )
+                    if not os.path.exists(thumb_jpg):
+                        convert_exr_to_jpg_with_ffmpeg(item["first_frame_path"], thumb_jpg)
+                    thumb_path = thumb_jpg
+                else:
+                    thumb_path = generate_mov_thumbnail(item["first_frame_path"], self.thumb_cache_dir)
+
+                table_row_data = {
+                    "thumbnail": thumb_path or "",
+                    "roll": item["basename"],
+                    "shot_name": "S샷명을_SH입력해주세요",
+                    "version": "v001",
+                    "type": item["type"],
+                    "path": item["seq_dir"],
+                }
+                self.main_window.add_table_row(table_row_data, base_row + i)
+                existing_rolls.add(item["basename"])
 
 
     # 파일선택 UI
@@ -125,7 +162,10 @@ class Controller:
         else:
             print("⚠️ 선택 취소됨")
             return None
+    
 
+    
+    
     # 엑셀 저장 함수 (버전 자동 증가)
     def on_save_excel(self):
         from model.excel_manager import save_to_excel_with_thumbnails, get_next_versioned_filename
@@ -357,3 +397,5 @@ class Controller:
         if not selected_project:
             print("❌ 프로젝트가 선택되지 않았습니다.")
             return
+        
+    
