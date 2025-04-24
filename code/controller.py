@@ -42,34 +42,40 @@ class Controller:
 
     # 다중 폴더 선택을 위한 유틸 
 
-    def select_multiple_folders(self,parent=None):
-        dialog = QFileDialog(parent)
-        dialog.setFileMode(QFileDialog.Directory)
-        dialog.setOption(QFileDialog.DontUseNativeDialog, True)
-        dialog.setOption(QFileDialog.ShowDirsOnly, True)
+    # def select_multiple_folders(self,parent=None):
+    #     dialog = QFileDialog(parent)
+    #     dialog.setFileMode(QFileDialog.Directory)
+    #     dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+    #     dialog.setOption(QFileDialog.ShowDirsOnly, True)
 
-        # QListView와 QTreeView를 다중 선택으로 변경
-        for view in dialog.findChildren(QListView):
-            view.setSelectionMode(QListView.ExtendedSelection)
+    #     # QListView와 QTreeView를 다중 선택으로 변경
+    #     for view in dialog.findChildren(QListView):
+    #         view.setSelectionMode(QListView.ExtendedSelection)
 
-        for view in dialog.findChildren(QTreeView):
-            view.setSelectionMode(QTreeView.ExtendedSelection)
+    #     for view in dialog.findChildren(QTreeView):
+    #         view.setSelectionMode(QTreeView.ExtendedSelection)
 
-        if dialog.exec():
-            return dialog.selectedFiles()
-        return []
+    #     if dialog.exec():
+    #         return dialog.selectedFiles()
+    #     return []
         
     
     def on_select_folder(self):
-        folders = self.select_multiple_folders(self.main_window)
-        if not folders:
+        from PySide6.QtWidgets import QFileDialog
+        folder = QFileDialog.getExistingDirectory(self.main_window, "날짜 폴더 선택")
+        if not folder:
             print("❌ 경로 선택 안됨")
             return
 
-        self.selected_folders = folders  # 선택된 여러 폴더 저장
-        self.folder_path = folders[0]  # 대표 폴더 하나 라벨로 표시
-        self.main_window.set_path(self.folder_path)
+        self.folder_path = folder
+        self.main_window.set_path(folder)
 
+        # 하위 폴더 자동 수집
+        self.selected_folders = [
+            os.path.join(folder, sub)
+            for sub in os.listdir(folder)
+            if os.path.isdir(os.path.join(folder, sub))
+        ]
 
 
     # scanfile_handler 로 .exr, .mov 파일 읽고, 썸네일 생성 
