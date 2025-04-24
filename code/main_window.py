@@ -126,14 +126,20 @@ class MainWindow(QWidget):
             row = self.table.rowCount()
         self.table.insertRow(row)
 
+        # CheckBox
+        checkbox = QCheckBox()
+        self.table.setCellWidget(row, 0, checkbox)
+
         # 썸네일 셀 (예시)
         thumb_label = QLabel()
         pixmap = QPixmap(data["thumbnail"])
         if not pixmap.isNull():
             thumb_label.setPixmap(pixmap.scaled(100, 60))
+            thumb_label.setToolTip(data["thumbnail"])
         else:
             thumb_label.setText("❌")
         self.table.setCellWidget(row, 1, thumb_label)
+        thumb_label.setToolTip(data["thumbnail"]) 
 
         # 나머지 데이터
         self.table.setItem(row, 2, QTableWidgetItem(data["roll"]))

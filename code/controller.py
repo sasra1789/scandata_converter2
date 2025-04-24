@@ -4,7 +4,7 @@ import os
 from main_window import MainWindow
 from model.scanfile_handler import find_plate_files
 from model.converter import generate_mov_thumbnail, convert_exr_to_jpg_with_ffmpeg,  convert_to_mp4, convert_to_webm, generate_montage_multi, find_thumbnail_from_montage,  list_excel_versions
-from model.excel_manager import save_to_excel, load_excel_data
+from model.excel_manager import save_to_excel_with_thumbnails, load_excel_data
 from model.scan_structure import create_plate_structure
 from model.shotgrid_api import connect_to_shotgrid, find_shot, create_version, create_shot, list_projects
 import shutil
@@ -126,20 +126,55 @@ class Controller:
             print("⚠️ 선택 취소됨")
             return None
 
+    # # 엑셀 저장 함수 (버전 자동 증가)
+    # def on_save_excel(self):
+    #     from model.excel_manager import save_to_excel_with_thumbnails, get_next_versioned_filename
+
+    #     if self.main_window.table.rowCount() == 0:
+    #         print("⚠️ 테이블에 데이터가 없습니다.")
+    #         return
+
+    #     # 저장 기본 경로 + 자동 버전명 생성
+    #     base_path = "/home/rapa/show/serin_converter/scanlist.xlsx"
+    #     save_path = get_next_versioned_filename(base_path)
+
+    #     # 테이블 위젯 기준으로 바로 저장
+    #     save_to_excel_with_thumbnails(self.main_window.table, save_path)
     # 엑셀 저장 함수 (버전 자동 증가)
     def on_save_excel(self):
-        from model.excel_manager import save_to_excel, get_next_versioned_filename
+        from model.excel_manager import save_to_excel_with_thumbnails, get_next_versioned_filename
+        from PySide6.QtWidgets import QTableWidgetItem
 
         if self.main_window.table.rowCount() == 0:
             print("⚠️ 테이블에 데이터가 없습니다.")
             return
 
-        # 저장 기본 경로 + 자동 버전명 생성
+        # 저장 경로: 자동 버전 증가된 .xlsx 파일 생성
         base_path = "/home/rapa/show/serin_converter/scanlist.xlsx"
         save_path = get_next_versioned_filename(base_path)
 
-        # 테이블 위젯 기준으로 바로 저장
-        save_to_excel(self.main_window.table, save_path)
+        # 테이블 데이터를 리스트로 추출
+        data_list = []
+        for row in range(self.main_window.table.rowCount()):
+            thumb_widget = self.main_window.table.cellWidget(row, 1)
+            thumbnail = thumb_widget.toolTip() if thumb_widget else ""
+
+            def safe_text(col):
+                item = self.main_window.table.item(row, col)
+                return item.text() if item else ""
+
+            data_list.append({
+                "thumbnail": thumbnail,
+                "roll": safe_text(2),
+                "shot_name": safe_text(3),
+                "version": safe_text(4),
+                "type": safe_text(5),
+                "path": safe_text(6),
+            })
+
+        #  엑셀로 저장 (썸네일 포함)
+        save_to_excel_with_thumbnails(data_list, save_path)
+
 
     def on_collect(self):
         if not self.folder_path:

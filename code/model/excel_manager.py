@@ -28,6 +28,7 @@
 
 import os
 import re
+from openpyxl import Workbook
 from openpyxl import load_workbook
 from openpyxl.drawing.image import Image as XLImage
 
@@ -51,30 +52,22 @@ def get_next_versioned_filename(base_path, prefix="scanlist", ext=".xlsx"):
     next_version = max(existing_versions, default=0) + 1
     return os.path.join(dir_name, f"{prefix}_v{next_version:03d}{ext}")
 
-def save_to_excel(table_widget, save_base_path):
-    """
-    PySide 테이블 위젯 데이터를 .xlsx 파일로 자동 버전명 붙여 저장
-    """
-    from openpyxl import Workbook
-
-    save_path = get_next_versioned_filename(save_base_path)
-
+def save_to_excel_with_thumbnails(data_list, output_path):
     wb = Workbook()
     ws = wb.active
-    ws.title = "ScanList" 
+    ws.title = "ScanList"
 
-    # 헤더 저장
+    # Step 1: 컬럼 헤더 작성
     headers = ["Thumbnail", "Roll", "Shot Name", "Version", "Type", "Path"]
-    for col in range(table_widget.columnCount()):
-        header = table_widget.horizontalHeaderItem(col).text()
-        headers.append(header)
     ws.append(headers)
 
-
-    for row_data in range(table_widget.rowCount()):
+    # Step 2: 데이터 삽입
+    for row_data in data_list:
         img_path = row_data["thumbnail"]
+
+        # 텍스트 데이터만 먼저 삽입
         row = [
-            "",  # 썸네일은 나중에 이미지로 채움
+            "",  # 썸네일은 이미지로 삽입할 예정
             row_data["roll"],
             row_data["shot_name"],
             row_data["version"],
@@ -83,25 +76,25 @@ def save_to_excel(table_widget, save_base_path):
         ]
         ws.append(row)
 
+        # Step 3: 이미지 삽입
         if img_path and os.path.exists(img_path):
-            img = XLImage(img_path)
-            img.width = 100
-            img.height = 60
-            cell = f"A{ws.max_row}"  # 현재 행의 A열에 이미지 삽입
-            ws.add_image(img, cell)
-    # 내용 저장
-    for row in range(table_widget.rowCount()):
-        row_data = []
-        for col in range(table_widget.columnCount()):
-            item = table_widget.item(row, col)
-            if item:
-                row_data.append(item.text())
-            else:
-                row_data.append("")  # 빈 칸 처리
-        ws.append(row_data)
+            try:
+                img = XLImage(img_path)
+                img.width = 100
+                img.height = 60
+                cell = f"A{ws.max_row}"  # 현재 행의 A열에 이미지 삽입
+                ws.add_image(img, cell)
+                # 행 높이도 이미지에 맞게 조절
+                ws.row_dimensions[ws.max_row].height = 45
+            except Exception as e:
+                print(f"❌ 이미지 삽입 실패: {img_path}\n{e}")
 
-    wb.save(save_path)
-    print(f" 엑셀 저장 완료: {save_path}")
+    # Step 4: 저장
+    try:
+        wb.save(output_path)
+        print(f" 엑셀 저장 완료: {output_path}")
+    except Exception as e:
+        print(f"❌ 엑셀 저장 실패: {e}")
 
 
 
@@ -120,3 +113,18 @@ def load_excel_data(xlsx_path):
         data_list.append(row_data)
 
     return data_list
+
+
+
+def get_next_versioned_filename(base_path):
+    base_dir = os.path.dirname(base_path)
+    base_name = os.path.splitext(os.path.basename(base_path))[0]  # scanlist
+    ext = os.path.splitext(base_path)[1]  # .xlsx
+
+    version = 1
+    while True:
+        filename = f"{base_name}_v{version:03d}{ext}"
+        full_path = os.path.join(base_dir, filename)
+        if not os.path.exists(full_path):
+            return full_path
+        version += 1
