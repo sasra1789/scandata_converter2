@@ -1,5 +1,7 @@
 from shotgun_api3 import Shotgun
 import os
+from model.converter import find_thumbnail_from_montage
+from model.excel_manager import load_excel_data
 
 def connect_to_shotgrid():
     SERVER_PATH = "https://ww5th.shotgrid.autodesk.com"
@@ -11,6 +13,14 @@ def connect_to_shotgrid():
     return sg
 
 # 샷그리드 
+
+def list_projects(sg):
+    """
+    ShotGrid 프로젝트 목록 반환
+    """
+    return sg.find("Project", [], ["name"])
+
+
 def find_shot(sg, project_name, shot_name):
     # 1. 프로젝트 찾기
     project = sg.find_one("Project", [["name", "is", project_name]], ["id"])
@@ -27,23 +37,7 @@ def find_shot(sg, project_name, shot_name):
     return project, shot
 
 
-# # 시퀀스도 자동생성.조회하여 연결
-# def create_shot(sg, project, shot_name):
-#     """
-#     Shot이 존재하지 않을 경우 자동 생성
-#     """
-#     sequence_name = shot_name.split("_")[0]  # 예: S002_SH0010 → S002
-#     sequence = get_or_create_sequence(sg, project, sequence_name)
-#     data = {
-#         "project": project,
-#         "code": shot_name,
-#         "sg_sequence": sequence, 
-#         "description": "자동 생성된 샷"
-#     }
-#     new_shot = sg.create("Shot", data)
-#     print(f" 샷 자동 생성됨: {new_shot['code']} (ID: {new_shot['id']})")
-#     return new_shot
-
+#test
 def create_shot(sg, project, shot_name, thumbnail_path=None):
     """
     Shot이 존재하지 않을 경우 자동 생성 + 썸네일 등록
@@ -65,8 +59,17 @@ def create_shot(sg, project, shot_name, thumbnail_path=None):
     if thumbnail_path and os.path.exists(thumbnail_path):
         sg.upload_thumbnail("Shot", new_shot["id"], thumbnail_path)
         print(f"🖼 샷 썸네일 업로드 완료: {os.path.basename(thumbnail_path)}")
-
+    else:
+        print("❌ 썸네일 업로드 실패")
+        if thumbnail_path is None:
+            print("📛 thumbnail_path = None (썸네일 경로가 전달되지 않음)")
+        else:
+            print(f"📁 전달된 경로: {thumbnail_path}")
+            print(f"📁 경로 존재 여부: {os.path.exists(thumbnail_path)}")
+            if not os.path.exists(thumbnail_path):
+                print("📛 경로는 있으나 실제 파일이 존재하지 않음")
     return new_shot
+
 
 # 시퀀스 자동생성
 def get_or_create_sequence(sg, project, sequence_name):
@@ -108,6 +111,9 @@ def create_version(sg, project, shot, version_name, mp4_path=None, thumbnail_pat
         print(f"🖼 썸네일 업로드 완료: {os.path.basename(thumbnail_path)}")
 
     return version
+
+
+
 
 sg = connect_to_shotgrid()
 projects = sg.find("Project", [], ["name", "id"])

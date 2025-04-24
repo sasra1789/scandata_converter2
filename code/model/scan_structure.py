@@ -31,19 +31,24 @@ import shutil
 
 import os
 
-def create_plate_structure(shot_name, plate_type, version):
+def create_plate_structure(base_dir, shot_name, plate_type, version):
     """
-    지정된 경로에 /product/{shot_name}/plate/{type}/{version}/ 구조 생성
+    plate/{type}/{version}/ 안에 필요한 구조 생성
+    단, mp4/webm은 별도 폴더 없이 version 폴더 내부에 파일만 저장
     """
-    base_root = "/home/rapa/westworld_serin/converter/product"  #  고정 base path
-    plate_root = os.path.join(base_root, shot_name, "plate", plate_type, version)
+    plate_root = os.path.join(base_dir, shot_name, "plate", plate_type, version)
+    os.makedirs(plate_root, exist_ok=True)
 
-    subfolders = ["org", "jpg", "mp4", "webm", "montage"]
+    subfolders = ["org", "jpg", "montage"]  
     created_paths = {}
 
     for sub in subfolders:
         path = os.path.join(plate_root, sub)
         os.makedirs(path, exist_ok=True)
         created_paths[sub] = path
+
+    #  mp4/webm은 파일 경로만 미리 정의해 반환
+    created_paths["mp4"] = os.path.join(plate_root, f"{shot_name}_plate_{version}.mp4")
+    created_paths["webm"] = os.path.join(plate_root, f"{shot_name}_plate_{version}.webm")
 
     return created_paths

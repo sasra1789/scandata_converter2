@@ -1,6 +1,24 @@
 
 import os
+import re
 import subprocess
+
+
+def list_excel_versions(directory, prefix="scanlist", ext=".xlsx"):
+    """
+    scanlist_v001.xlsx, v002 ... 와 같은 저장된 엑셀 파일 목록을 버전 순으로 반환
+    """
+    pattern = re.compile(rf"{re.escape(prefix)}_v(\d{{3}}){re.escape(ext)}")
+    files = []
+
+    for f in os.listdir(directory):
+        match = pattern.match(f)
+        if match:
+            files.append((int(match.group(1)), f))
+
+    files.sort()
+    return [f for _, f in files]
+
 
 def convert_exr_to_jpg_with_ffmpeg(exr_path, output_path):
     """
@@ -96,24 +114,43 @@ def generate_montage(input_path, output_path):
     print("montage 변환 성공")
     return subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
 
-# 샷그리드 내에서 썸네일을 montage 폴더에서 찾기
+# # 샷그리드 내에서 썸네일을 montage 폴더에서 찾기
+# def find_thumbnail_from_montage(dir_path):
+#     """
+#     montage 폴더에서 가장 먼저 나오는 jpg를 썸네일로 사용
+#     """
+#     if not os.path.exists(dir_path):
+#         return None
+
+#     files = sorted([
+#         f for f in os.listdir(dir_path)
+#         if f.lower().endswith(".jpg")
+#     ])
+#     print(f"[찾은 썸네일] {files}") 
+#     if not files:
+#         print(f"{files} 존재하지 않음!")
+#         return None
+        
+
+#     return os.path.join(dir_path, files[0])
+
+# 디버그 문구 추가
 def find_thumbnail_from_montage(dir_path):
-    """
-    montage 폴더에서 가장 먼저 나오는 jpg를 썸네일로 사용
-    """
+    print(f"[DEBUG] dir_path = {dir_path}")
     if not os.path.exists(dir_path):
+        print(f"[ERROR] ❌ 디렉토리가 존재하지 않음: {dir_path}")
         return None
 
     files = sorted([
         f for f in os.listdir(dir_path)
         if f.lower().endswith(".jpg")
     ])
-    print(f"[찾은 썸네일] {files}") 
-    if not files:
-        print(f"{files} 존재하지 않음!")
-        return None
-        
 
+    if not files:
+        print(f"[ERROR] ❌ JPG 파일 없음 in: {dir_path}")
+        return None
+
+    print(f"[찾은 썸네일] {files[0]}")
     return os.path.join(dir_path, files[0])
 
 def generate_montage_multi(input_path, output_dir, basename, interval=10, max_frames=5):

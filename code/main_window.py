@@ -2,7 +2,7 @@
 
 from PySide6.QtWidgets import (
     QWidget, QLabel, QPushButton, QTableWidget, QVBoxLayout,
-    QHBoxLayout, QFileDialog, QTableWidgetItem, QCheckBox
+    QHBoxLayout, QFileDialog, QTableWidgetItem, QCheckBox, QComboBox
 )
 from PySide6.QtGui import QPixmap
 import os
@@ -44,8 +44,30 @@ class MainWindow(QWidget):
         self.sg_upload_button = QPushButton("Register to ShotGrid")
         bottom_layout.addWidget(self.sg_upload_button)
 
+        # 엑셀 선택하여 샷그리드에 바로 업로드
+        self.register_excel_button = QPushButton("엑셀 선택 → ShotGrid 업로드")
+        bottom_layout.addWidget(self.register_excel_button)
+
+
+        # 프로젝트에 바로 뜨도록 하기 
+        self.project_label = QLabel("🔘 선택된 프로젝트: 없음")
+        bottom_layout.addWidget(self.project_label)
+
+
+        # 프로젝트 선택 UI
+        self.project_combo_label = QLabel("📁 프로젝트 선택:")
+        self.project_combo = QComboBox()
+        # 초기화 시 기본값
+        self.project_combo.addItem("🔄 ShotGrid 프로젝트 불러오는 중...")
+
+        # 위쪽 레이아웃에 추가
+        top_layout = QHBoxLayout()
+        top_layout.addWidget(self.project_combo_label)
+        top_layout.addWidget(self.project_combo)
+
         # ==== 전체 레이아웃 ====
         layout = QVBoxLayout()
+        layout.addLayout(top_layout)
         layout.addLayout(path_layout)
         layout.addWidget(self.table)
         layout.addLayout(bottom_layout)
