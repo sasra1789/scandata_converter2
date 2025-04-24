@@ -10,6 +10,8 @@ from model.shotgrid_api import connect_to_shotgrid, find_shot, create_version, c
 import shutil
 from PySide6.QtWidgets import QInputDialog, QFileDialog, QListView, QTreeView
 
+
+
 class Controller:
     def __init__(self):
         self.main_window = MainWindow()
@@ -29,36 +31,9 @@ class Controller:
         self.main_window.load_button.clicked.connect(self.on_load_files)
         self.main_window.save_button.clicked.connect(self.on_save_excel)
         self.main_window.collect_button.clicked.connect(self.on_collect)
-        self.main_window.sg_upload_button.clicked.connect(self.on_register_all_to_shotgrid)
-        self.main_window.register_excel_button.clicked.connect(self.on_register_from_selected_excel)
-
-    # # 디렉토리 선택하고 path 라벨에 표시
-    # def on_select_folder(self):
-    #     folder = QFileDialog.getExistingDirectory(self.main_window, "스캔 폴더 선택")
-    #     if folder:
-    #         self.folder_path = folder
-    #         self.main_window.set_path(folder)
+        self.main_window.register_excel_button.clicked.connect(self.on_register_to_shotgrid)
 
 
-    # 다중 폴더 선택을 위한 유틸 
-
-    # def select_multiple_folders(self,parent=None):
-    #     dialog = QFileDialog(parent)
-    #     dialog.setFileMode(QFileDialog.Directory)
-    #     dialog.setOption(QFileDialog.DontUseNativeDialog, True)
-    #     dialog.setOption(QFileDialog.ShowDirsOnly, True)
-
-    #     # QListView와 QTreeView를 다중 선택으로 변경
-    #     for view in dialog.findChildren(QListView):
-    #         view.setSelectionMode(QListView.ExtendedSelection)
-
-    #     for view in dialog.findChildren(QTreeView):
-    #         view.setSelectionMode(QTreeView.ExtendedSelection)
-
-    #     if dialog.exec():
-    #         return dialog.selectedFiles()
-    #     return []
-        
     
     def on_select_folder(self):
         from PySide6.QtWidgets import QFileDialog
@@ -286,73 +261,44 @@ class Controller:
 
 
     # 샷그리드
-    def on_register_all_to_shotgrid(self):
-        sg = connect_to_shotgrid()
-        project_name = "serin_converter"  # 너의 ShotGrid 프로젝트명
-      
-    
-        for row in range(self.main_window.table.rowCount()):
-            shot_name = self.main_window.table.item(row, 3).text()
-            version = self.main_window.table.item(row, 4).text()
-            plate_type = self.main_window.table.item(row, 5).text()
-            path = self.main_window.table.item(row, 6).text()
 
-            # 변환된 경로로 재구성
-            base_product_root = "/home/rapa/show/serin_converter/product"
-            plate_base_path = os.path.join(base_product_root, shot_name, "plate", plate_type, version)
+    def on_register_to_shotgrid(self):
 
-            #  montage 디렉토리 경로
-            montage_dir = os.path.join(plate_base_path, "montage")
-            thumbnail_path = find_thumbnail_from_montage(montage_dir)
-
-            # 파일 경로 구성
-            mp4_path = os.path.join(path, "mp4", version, f"{shot_name}_plate_{version}.mp4")
-            thumb_path = os.path.join(path, "montage", version, f"{shot_name}_montage_0001.jpg")
-            # 샷 찾기
-            project, shot = find_shot(sg, project_name, shot_name)
-            if not (project and shot):
-                print(f" 샷 '{shot_name}'가 존재하지 않아 자동 생성합니다.")
-                shot = create_shot(sg, project, shot_name, thumb_path)
-                continue
-
-            # Version 등록
-            print(f"⬆️ 등록 중: {shot_name} / {version}")
-
-            create_version(sg, project, shot, version, mp4_path, thumbnail_path)
-
-    def on_register_from_selected_excel(self):
-
-        selected_excel = self.on_select_excel_version()
-        if not selected_excel:
+        #  Step 1: 엑셀 파일 선택
+        excel_path, _ = QFileDialog.getOpenFileName(
+            self.main_window,
+            "등록할 엑셀 파일 선택",
+            "/home/rapa/show/serin_converter",
+            "Excel Files (*.xlsx)"
+        )
+        if not excel_path:
+            print(" 엑셀 파일 선택 취소됨")
             return
 
-        # 프로젝트 선택
-        selected_project = self.select_project()
-        if not selected_project:
-            return
-
-        # 여기에 엑셀 읽고 ShotGrid 등록하는 루프 붙이기
-        data_list = load_excel_data(selected_excel)
+        #  Step 2: 엑셀 로드
+        data_list = load_excel_data(excel_path)
         sg = connect_to_shotgrid()
+
+        # 프로젝트 선택은 미리 선택한 UI 필드에서 가져오도록 처리하거나 고정값
+        project_name = "serin_converter"
 
         for data in data_list:
-            shot_name = data["shot_name"]
-            version = data["version"]
-            path = data["path"]
-            type_ = data["type"]
+            shot_name = data["Shot Name"]
+            version = data["Version"]
+            path = data["Path"]
+            type_ = data["Type"]
             mp4_path = os.path.join(path, f"{shot_name}_plate_{version}.mp4")
             montage_dir = os.path.join(path, "montage")
-            thumbnail_path = find_thumbnail_from_montage(montage_dir)
+            # thumbnail_path = data["Thumbnail"]
+            thumbnail_path = data.get("Thumbnail Path", "")
 
-            project, shot = find_shot(sg, selected_project["name"], shot_name)
+            project, shot = find_shot(sg, project_name, shot_name)
             if not shot:
-                shot = create_shot(sg, selected_project, shot_name, thumbnail_path)
+                shot = create_shot(sg, project, shot_name, thumbnail_path)
 
-            create_version(sg, selected_project, shot, version, mp4_path, thumbnail_path)
-
-
+            create_version(sg, project, shot, version, mp4_path, thumbnail_path)
+    
     #UI 내 프로젝트 선택함수
-
     def select_project(self):
         sg = connect_to_shotgrid()
         projects = list_projects(sg)

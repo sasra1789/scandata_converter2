@@ -38,7 +38,7 @@ def find_shot(sg, project_name, shot_name):
 
 
 #test
-def create_shot(sg, project, shot_name, thumbnail_path=None):
+def create_shot(sg, project, shot_name, thumbnail_path):
     """
     Shot이 존재하지 않을 경우 자동 생성 + 썸네일 등록
     """
@@ -63,6 +63,7 @@ def create_shot(sg, project, shot_name, thumbnail_path=None):
         print("❌ 썸네일 업로드 실패")
         if thumbnail_path is None:
             print("📛 thumbnail_path = None (썸네일 경로가 전달되지 않음)")
+            print(f"📁 전달된 경로: {thumbnail_path}")
         else:
             print(f"📁 전달된 경로: {thumbnail_path}")
             print(f"📁 경로 존재 여부: {os.path.exists(thumbnail_path)}")
@@ -87,7 +88,7 @@ def get_or_create_sequence(sg, project, sequence_name):
     })
 
 # 3. 샷그리드 찾기
-def create_version(sg, project, shot, version_name, mp4_path=None, thumbnail_path=None):
+def create_version(sg, project, shot, version_name, mp4_path, thumbnail_path):
     data = {
         "project": project,
         "entity": shot,

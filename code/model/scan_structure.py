@@ -12,25 +12,6 @@ jpg/, mp4/, webm/, montage/ 폴더로 변환 이미지 생성
 import os
 import shutil
 
-# def create_plate_structure(base_dir, shot_name, plate_type, version):
-#     """
-#     샷 이름 기준 plate 폴더 구조 생성
-#     """
-#     plate_root = os.path.join(base_dir, shot_name, "plate", plate_type, version)
-#     subfolders = ["org", "jpg", "mp4", "webm", "montage"]
-
-#     created_paths = {}
-#     for sub in subfolders:
-#         path = os.path.join(plate_root, sub)
-#         os.makedirs(path, exist_ok=True)
-#         created_paths[sub] = path
-
-#     return created_paths  # dict
-
-# model/scan_structure.py
-
-import os
-
 def create_plate_structure(base_dir, shot_name, plate_type, version):
     """
     plate/{type}/{version}/ 안에 필요한 구조 생성

@@ -40,13 +40,10 @@ class MainWindow(QWidget):
         bottom_layout.addWidget(self.save_button)
         bottom_layout.addWidget(self.collect_button)
 
-        #샷그리드 등록버튼
-        self.sg_upload_button = QPushButton("Register to ShotGrid")
-        bottom_layout.addWidget(self.sg_upload_button)
-
         # 엑셀 선택하여 샷그리드에 바로 업로드
         self.register_excel_button = QPushButton("엑셀 선택 → ShotGrid 업로드")
         bottom_layout.addWidget(self.register_excel_button)
+
 
 
         # 프로젝트에 바로 뜨도록 하기 
