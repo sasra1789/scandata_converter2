@@ -126,20 +126,6 @@ class Controller:
             print("⚠️ 선택 취소됨")
             return None
 
-    # # 엑셀 저장 함수 (버전 자동 증가)
-    # def on_save_excel(self):
-    #     from model.excel_manager import save_to_excel_with_thumbnails, get_next_versioned_filename
-
-    #     if self.main_window.table.rowCount() == 0:
-    #         print("⚠️ 테이블에 데이터가 없습니다.")
-    #         return
-
-    #     # 저장 기본 경로 + 자동 버전명 생성
-    #     base_path = "/home/rapa/show/serin_converter/scanlist.xlsx"
-    #     save_path = get_next_versioned_filename(base_path)
-
-    #     # 테이블 위젯 기준으로 바로 저장
-    #     save_to_excel_with_thumbnails(self.main_window.table, save_path)
     # 엑셀 저장 함수 (버전 자동 증가)
     def on_save_excel(self):
         from model.excel_manager import save_to_excel_with_thumbnails, get_next_versioned_filename
@@ -251,61 +237,6 @@ class Controller:
                 print(f"  Montage : {'✅' if montage_ok else '❌'} → {montage_path}")
             else:
                 print(f" {shot} → 변환할 MOV/MP4/EXR 파일이 org 폴더에 없습니다.")
-
-            # # 여기 성형한다(원본)
-            # # 3. 이제 변환 시작
-            # if input_video:
-            #     print(f" 변환 대상 파일: {input_video}")
-                
-            #     mp4_path = os.path.join(structure["mp4"], f"{shot}_plate_{version}.mp4")
-            #     webm_path = os.path.join(structure["webm"], f"{shot}_plate_{version}.webm")
-            #     montage_path = os.path.join(structure["montage"], f"{shot}_plate_{version}.jpg")
-
-
-            #     mp4_ok = convert_to_mp4(input_video, mp4_path)
-            #     webm_ok = convert_to_webm(input_video, webm_path)
-            #     # montage_ok = generate_montage(input_video, montage_path)
-            #     montage_ok = generate_montage_multi(
-            #         input_video,
-            #         output_dir=structure["montage"],
-            #         basename=shot,
-            #         interval=5,
-            #         max_frames=10
-            #     )
-
-            #     print(f"  MP4     : {'✅' if mp4_ok else '❌'} → {mp4_path}")
-            #     print(f"  WebM    : {'✅' if webm_ok else '❌'} → {webm_path}")
-            #     print(f"  Montage : {'✅' if montage_ok else '❌'} → {montage_path}")
-            # else:
-            #     print(f" {shot} → 변환할 MOV/MP4/EXR 파일이 org 폴더에 없습니다.")
-
-    # # 샷그리드 test 위한 원본 (썸넬 경로 재설정)
-    # def on_register_all_to_shotgrid(self):
-    #     sg = connect_to_shotgrid()
-    #     project_name = "serin_converter"  # 너의 ShotGrid 프로젝트명
-      
-    
-    #     for row in range(self.main_window.table.rowCount()):
-    #         shot_name = self.main_window.table.item(row, 3).text()
-    #         version = self.main_window.table.item(row, 4).text()
-    #         path = self.main_window.table.item(row, 6).text()
-
-    #         # 파일 경로 구성
-    #         mp4_path = os.path.join(path, "mp4", version, f"{shot_name}_plate_{version}.mp4")
-    #         thumb_path = os.path.join(path, "montage", version, f"{shot_name}_montage_0001.jpg")
-    #         montage_dir = os.path.join(path, "montage", version)
-    #         thumbnail_path = find_thumbnail_from_montage(montage_dir)
-    #         # 샷 찾기
-    #         project, shot = find_shot(sg, project_name, shot_name)
-    #         if not (project and shot):
-    #             print(f"🔎 샷 '{shot_name}'가 존재하지 않아 자동 생성합니다.")
-    #             shot = create_shot(sg, project, shot_name, thumb_path)
-    #             continue
-
-    #         # Version 등록
-    #         print(f"⬆️ 등록 중: {shot_name} / {version}")
-
-    #         create_version(sg, project, shot, version, mp4_path, thumbnail_path)
 
 
     # 샷그리드
