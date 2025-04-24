@@ -29,6 +29,7 @@
 import os
 import re
 from openpyxl import load_workbook
+from openpyxl.drawing.image import Image as XLImage
 
 def get_next_versioned_filename(base_path, prefix="scanlist", ext=".xlsx"):
     """
@@ -60,14 +61,34 @@ def save_to_excel(table_widget, save_base_path):
 
     wb = Workbook()
     ws = wb.active
+    ws.title = "ScanList" 
 
     # 헤더 저장
-    headers = []
+    headers = ["Thumbnail", "Roll", "Shot Name", "Version", "Type", "Path"]
     for col in range(table_widget.columnCount()):
         header = table_widget.horizontalHeaderItem(col).text()
         headers.append(header)
     ws.append(headers)
 
+
+    for row_data in range(table_widget.rowCount()):
+        img_path = row_data["thumbnail"]
+        row = [
+            "",  # 썸네일은 나중에 이미지로 채움
+            row_data["roll"],
+            row_data["shot_name"],
+            row_data["version"],
+            row_data["type"],
+            row_data["path"],
+        ]
+        ws.append(row)
+
+        if img_path and os.path.exists(img_path):
+            img = XLImage(img_path)
+            img.width = 100
+            img.height = 60
+            cell = f"A{ws.max_row}"  # 현재 행의 A열에 이미지 삽입
+            ws.add_image(img, cell)
     # 내용 저장
     for row in range(table_widget.rowCount()):
         row_data = []
