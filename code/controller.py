@@ -33,6 +33,13 @@ class Controller:
         self.main_window.collect_button.clicked.connect(self.on_collect)
         self.main_window.register_excel_button.clicked.connect(self.on_register_to_shotgrid)
 
+        #모든 선택/해제버튼
+        # self.main_window.select_all_button.clicked.connect(self.select_all_rows)
+        # self.select_all_checked = False  # ← 상태 기억용 변수
+        # self.main_window.toggle_select_button.clicked.connect(self.toggle_select_all)
+        self.select_all_checked = False
+        # ✅ 하나의 토글 버튼만 연결
+        self.main_window.toggle_select_button.clicked.connect(self.toggle_select_all)
 
     
     def on_select_folder(self):
@@ -163,10 +170,14 @@ class Controller:
         # 테이블 데이터를 리스트로 추출
         data_list = []
         for row in range(self.main_window.table.rowCount()):
+            checkbox = self.main_window.table.cellWidget(row, 0)
+            if not checkbox.isChecked():
+                continue  # 체크박스 체크 안하면 넘어감
+
             thumb_widget = self.main_window.table.cellWidget(row, 1)
             thumbnail = thumb_widget.toolTip() if thumb_widget else ""
 
-            def safe_text(col):
+            def safe_text(col): # 핼퍼함수 
                 item = self.main_window.table.item(row, col)
                 return item.text() if item else ""
 
@@ -178,9 +189,17 @@ class Controller:
                 "type": safe_text(5),
                 "path": safe_text(6),
             })
+            
 
         #  엑셀로 저장 (썸네일 포함)
         save_to_excel_with_thumbnails(data_list, save_path)
+
+        # 모두 체크 안될 경우 
+        if not data_list:
+            print("⚠️ 체크된 항목이 없습니다. 엑셀 저장을 취소합니다.")
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(self.main_window, "경고", "✔ 체크된 항목이 없습니다.")
+            return
 
 
     def on_collect(self):
@@ -200,13 +219,24 @@ class Controller:
             thumb_path = thumb_label.toolTip() if thumb_label else None
             
 
+            # structure = create_plate_structure(
+            #     base_dir = "/home/rapa/show/{project}" , # 인자값 이슈로 수정 #0424 프로젝트명
+            #     shot_name=shot,
+            #     plate_type=plate_type,
+            #     version=version
+            # )
+            project = self.get_selected_project()
+            if not project:
+                print("❌ 프로젝트가 선택되지 않았습니다.")
+                return
+
+            base_dir = f"/home/rapa/show/{project['name']}"
             structure = create_plate_structure(
-                base_dir = "/home/rapa/show/{project}" , # 인자값 이슈로 수정 #0424 프로젝트명
+                base_dir=base_dir,
                 shot_name=shot,
                 plate_type=plate_type,
                 version=version
             )
-
             # 1. 원본 복사
             for file in os.listdir(src_path):
                 if file.lower().endswith((".exr", ".mov", ".mp4")):
@@ -279,9 +309,18 @@ class Controller:
         data_list = load_excel_data(excel_path)
         sg = connect_to_shotgrid()
 
-        # 프로젝트 선택은 미리 선택한 UI 필드에서 가져오도록 처리하거나 고정값
-        project_name = "serin_converter"
+        # # 프로젝트 선택은 미리 선택한 UI 필드에서 가져오도록 처리하거나 고정값
+        project = self.get_selected_project()
+        if not project:
+            print("❌ 프로젝트가 선택되지 않았습니다.")
+            return
+        project_name = project["name"]
+        print(f"✅ 선택된 프로젝트: {project_name}")
 
+        # Step3 : 엑셀 데이터 로드
+        data_list = load_excel_data(excel_path)
+        sg = connect_to_shotgrid()
+        
         for data in data_list:
             shot_name = data["Shot Name"]
             version = data["Version"]
@@ -350,4 +389,30 @@ class Controller:
             print("❌ 프로젝트가 선택되지 않았습니다.")
             return
         
-    
+    # 모든 체크박스 선택 / 해제
+    def select_all_rows(self):
+        row_count = self.main_window.table.rowCount()
+        for row in range(row_count):
+            checkbox = self.main_window.table.cellWidget(row, 0)
+            if checkbox:
+                checkbox.setChecked(True)
+        print(f"✔ {row_count}개 항목 모두 체크됨")
+
+    def toggle_select_all(self):
+        row_count = self.main_window.table.rowCount()
+        new_state = not self.select_all_checked  # True → 체크, False → 해제
+
+        for row in range(row_count):
+            checkbox = self.main_window.table.cellWidget(row, 0)
+            if checkbox:
+                checkbox.setChecked(new_state)
+
+        # 버튼 텍스트 업데이트
+        if new_state:
+            self.main_window.toggle_select_button.setText("❎ 모두 해제")
+            print(f"✔ {row_count}개 항목 전체 선택됨")
+        else:
+            self.main_window.toggle_select_button.setText("✔ 모두 선택")
+            print(f"❎ 전체 해제됨")
+
+        self.select_all_checked = new_state

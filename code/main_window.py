@@ -40,6 +40,14 @@ class MainWindow(QWidget):
         bottom_layout.addWidget(self.save_button)
         bottom_layout.addWidget(self.collect_button)
 
+
+        # 체크박스 모두 선택 / 해제 
+        # self.select_all_button = QPushButton("✔ 모든 항목 선택")
+        # bottom_layout.addWidget(self.select_all_button)
+        self.toggle_select_button = QPushButton("✔ 모두 선택")
+        bottom_layout.addWidget(self.toggle_select_button)
+
+
         # 엑셀 선택하여 샷그리드에 바로 업로드
         self.register_excel_button = QPushButton("엑셀 선택 → ShotGrid 업로드")
         bottom_layout.addWidget(self.register_excel_button)
