@@ -88,7 +88,33 @@ def get_or_create_sequence(sg, project, sequence_name):
     })
 
 # 3. 샷그리드 찾기
-def create_version(sg, project, shot, version_name, mp4_path, thumbnail_path):
+# def create_version(sg, project, shot, version_name, mp4_path, thumbnail_path):
+#     data = {
+#         "project": project,
+#         "entity": shot,
+#         "code": version_name,
+#         "description": "ScanData Auto Upload",
+#     }
+
+#     # 1. Version 엔티티 생성
+#     version = sg.create("Version", data)
+#     print(f" Version 생성: {version['id']}")
+
+#     # 2. 미디어 업로드 (mp4)
+#     if mp4_path and os.path.exists(mp4_path):
+#         sg.upload("Version", version["id"], mp4_path, field_name="uploaded_movie")
+#         print(f"🎞 mp4 업로드 완료: {os.path.basename(mp4_path)}")
+
+#     # 3. 썸네일 업로드
+#     if thumbnail_path and os.path.exists(thumbnail_path):
+#         sg.upload_thumbnail("Version", version["id"], thumbnail_path)
+#         sg.upload_thumbnail("Shot", shot["id"], thumbnail_path)
+#         print(f"🖼 썸네일 업로드 완료: {os.path.basename(thumbnail_path)}")
+
+#     return version
+
+def create_version(sg, project, shot, version_name, mp4_path, thumbnail_path,
+                   webm_path=None, montage_path=None):
     data = {
         "project": project,
         "entity": shot,
@@ -96,22 +122,28 @@ def create_version(sg, project, shot, version_name, mp4_path, thumbnail_path):
         "description": "ScanData Auto Upload",
     }
 
-    # 1. Version 엔티티 생성
+    # 1. Version 생성
     version = sg.create("Version", data)
-    print(f" Version 생성: {version['id']}")
+    print(f"📦 Version 생성: {version['id']}")
 
-    # 2. 미디어 업로드 (mp4)
+    # 2. MP4 업로드
     if mp4_path and os.path.exists(mp4_path):
-        sg.upload("Version", version["id"], mp4_path, field_name="uploaded_movie")
-        print(f"🎞 mp4 업로드 완료: {os.path.basename(mp4_path)}")
+        sg.upload("Version", version["id"], mp4_path, field_name="sg_uploaded_movie")
+        print(f"🎞 MP4 업로드 완료: {os.path.basename(mp4_path)}")
 
-    # 3. 썸네일 업로드
-    if thumbnail_path and os.path.exists(thumbnail_path):
-        sg.upload_thumbnail("Version", version["id"], thumbnail_path)
-        sg.upload_thumbnail("Shot", shot["id"], thumbnail_path)
-        print(f"🖼 썸네일 업로드 완료: {os.path.basename(thumbnail_path)}")
+    # 3. WebM 업로드 (Attachment로 등록)
+    if webm_path and os.path.exists(webm_path):
+        sg.upload("Version", version["id"], webm_path)
+        print(f"🌐 WebM 업로드 완료: {os.path.basename(webm_path)}")
+
+    # 4. Montage → 썸네일로 사용 가능
+    if montage_path and os.path.exists(montage_path):
+        sg.upload_thumbnail("Version", version["id"], montage_path)
+        sg.upload_thumbnail("Shot", shot["id"], montage_path)
+        print(f"🖼 몽타주 썸네일 업로드 완료: {os.path.basename(montage_path)}")
 
     return version
+
 
 
 

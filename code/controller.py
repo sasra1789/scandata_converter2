@@ -321,21 +321,58 @@ class Controller:
         data_list = load_excel_data(excel_path)
         sg = connect_to_shotgrid()
         
+        # for data in data_list:
+        #     shot_name = data["Shot Name"]
+        #     version = data["Version"]
+        #     path = data["Path"]
+        #     type_ = data["Type"]
+        #     mp4_path = os.path.join(path, f"{shot_name}_plate_{version}.mp4")
+            
+        #     montage_dir = os.path.join(path, "montage")
+        #     # thumbnail_path = data["Thumbnail"]
+        #     thumbnail_path = data.get("Thumbnail Path", "")
+
+        #     project, shot = find_shot(sg, project_name, shot_name)
+        #     if not shot:
+        #         shot = create_shot(sg, project, shot_name, thumbnail_path)
+
+        #     create_version(sg, project, shot, version, mp4_path, thumbnail_path)
+
         for data in data_list:
             shot_name = data["Shot Name"]
             version = data["Version"]
-            path = data["Path"]
             type_ = data["Type"]
-            mp4_path = os.path.join(path, f"{shot_name}_plate_{version}.mp4")
-            montage_dir = os.path.join(path, "montage")
-            # thumbnail_path = data["Thumbnail"]
-            thumbnail_path = data.get("Thumbnail Path", "")
 
+            # ✅ 현재 선택된 프로젝트 기준으로 직접 경로 재구성
+            selected_project = self.get_selected_project()
+            if not selected_project:
+                print("❌ 프로젝트가 선택되지 않았습니다.")
+                return
+            project_name = selected_project["name"]
+
+            base_path = f"/home/rapa/show/{project_name}/{shot_name}/plate/{type_}/{version}"
+
+            mp4_path = os.path.join(base_path, f"{shot_name}_plate_{version}.mp4")
+            webm_path = os.path.join(base_path, f"{shot_name}_plate_{version}.webm")
+            montage_dir = os.path.join(base_path, "montage")
+            montage_path = find_thumbnail_from_montage(montage_dir)
+
+            # 썸네일은 여전히 엑셀에서 가져와도 되고, montage 썸네일로 대체해도 됨
+            thumbnail_path = montage_path  # 또는 data.get("Thumbnail Path", "")
+
+            # Shot 생성 및 등록
             project, shot = find_shot(sg, project_name, shot_name)
             if not shot:
                 shot = create_shot(sg, project, shot_name, thumbnail_path)
 
-            create_version(sg, project, shot, version, mp4_path, thumbnail_path)
+            create_version(
+                sg, project, shot, version,
+                mp4_path=mp4_path,
+                thumbnail_path=thumbnail_path,
+                webm_path=webm_path,
+                montage_path=montage_path
+            )
+
     
     #UI 내 프로젝트 선택함수
     def select_project(self):
