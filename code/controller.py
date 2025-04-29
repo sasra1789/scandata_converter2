@@ -4,11 +4,11 @@ import os
 from main_window import MainWindow
 from model.scanfile_handler import find_plate_files
 from model.converter import generate_mov_thumbnail, convert_exr_to_jpg_with_ffmpeg,  convert_to_mp4, convert_to_webm, generate_montage_multi, find_thumbnail_from_montage,  list_excel_versions
-from model.excel_manager import save_to_excel_with_thumbnails, load_excel_data
+from model.excel_manager import save_to_excel_with_thumbnails, load_excel_data,  get_next_versioned_filename, build_excel_save_path
 from model.scan_structure import create_plate_structure
 from model.shotgrid_api import connect_to_shotgrid, find_shot, create_version, create_shot, list_projects
 import shutil
-from PySide6.QtWidgets import QInputDialog, QFileDialog, QListView, QTreeView
+from PySide6.QtWidgets import QInputDialog, QFileDialog, QMessageBox
 
 
 
@@ -32,13 +32,10 @@ class Controller:
         self.main_window.save_button.clicked.connect(self.on_save_excel)
         self.main_window.collect_button.clicked.connect(self.on_collect)
         self.main_window.register_excel_button.clicked.connect(self.on_register_to_shotgrid)
+        self.main_window.project_combo.currentTextChanged.connect(self.update_project_label)
 
-        #모든 선택/해제버튼
-        # self.main_window.select_all_button.clicked.connect(self.select_all_rows)
-        # self.select_all_checked = False  # ← 상태 기억용 변수
-        # self.main_window.toggle_select_button.clicked.connect(self.toggle_select_all)
+        #모든 선택/해제버튼 하나의 토글 버튼만 연결
         self.select_all_checked = False
-        # ✅ 하나의 토글 버튼만 연결
         self.main_window.toggle_select_button.clicked.connect(self.toggle_select_all)
 
     
@@ -46,7 +43,7 @@ class Controller:
         from PySide6.QtWidgets import QFileDialog
         folder = QFileDialog.getExistingDirectory(self.main_window, "날짜 폴더 선택")
         if not folder:
-            print("❌ 경로 선택 안됨")
+            print("X 경로 선택 안됨")
             return
 
         self.folder_path = folder
@@ -131,7 +128,7 @@ class Controller:
         excel_files = list_excel_versions(excel_dir)
 
         if not excel_files:
-            print("❌ 저장된 엑셀 파일이 없습니다.")
+            print("X 저장된 엑셀 파일이 없습니다.")
             return None
 
         #  사용자에게 파일 선택 받기
@@ -150,27 +147,24 @@ class Controller:
         else:
             print("⚠️ 선택 취소됨")
             return None
-    
 
-    
-    
+
     # 엑셀 저장 함수 (버전 자동 증가)
     def on_save_excel(self):
-        from model.excel_manager import save_to_excel_with_thumbnails, get_next_versioned_filename
+        
         from PySide6.QtWidgets import QTableWidgetItem
 
         if self.main_window.table.rowCount() == 0:
             print("⚠️ 테이블에 데이터가 없습니다.")
             return
 
-        # 저장 경로: 자동 버전 증가된 .xlsx 파일 생성
-        base_path = "/home/rapa/show/serin_converter/scanlist.xlsx"
-        save_path = get_next_versioned_filename(base_path)
+        
 
         # 테이블 데이터를 리스트로 추출
         data_list = []
         for row in range(self.main_window.table.rowCount()):
             checkbox = self.main_window.table.cellWidget(row, 0)
+            
             if not checkbox.isChecked():
                 continue  # 체크박스 체크 안하면 넘어감
 
@@ -191,9 +185,7 @@ class Controller:
             })
             
 
-        #  엑셀로 저장 (썸네일 포함)
-        save_to_excel_with_thumbnails(data_list, save_path)
-
+        
         # 모두 체크 안될 경우 
         if not data_list:
             print("⚠️ 체크된 항목이 없습니다. 엑셀 저장을 취소합니다.")
@@ -201,6 +193,49 @@ class Controller:
             QMessageBox.warning(self.main_window, "경고", "✔ 체크된 항목이 없습니다.")
             return
 
+
+        # 에라모르겠다
+
+        # project_name 먼저 가져오기
+        project = self.get_selected_project()
+        if not project:
+            print("⚠️ 프로젝트가 선택되지 않았습니다.")
+            QMessageBox.warning(self.main_window, "오류", "프로젝트가 선택되지 않았습니다.")
+            return
+        project_name = project["name"]
+
+        # 폴더 선택 다이얼로그 열기
+        scan_root = f"/home/rapa/show/{project_name}/product/scan"
+        selected_folder = QFileDialog.getExistingDirectory(
+            self.main_window,
+            "날짜 폴더 선택",
+            scan_root
+        )
+    
+        if not selected_folder:
+            print("⚠️ 폴더 선택이 취소되었습니다.")
+            return
+        
+        print(f"선택된 폴더: {selected_folder}")
+
+        # 선택된 폴더 경로 분석
+        parts = selected_folder.split("/")
+        try:
+            scan_date_folder = parts[-2]  # 날짜폴더명
+            shot_folder_name = parts[-1]  # 샷폴더명
+        except IndexError:
+            QMessageBox.warning(self.main_window, "오류", "선택한 폴더 구조가 올바르지 않습니다.")
+            return
+
+        print(f" 선택한 날짜: {scan_date_folder}, 샷 폴더명: {shot_folder_name}")
+
+        # 저장 경로: 자동 버전 증가된 .xlsx 파일 생성
+        # 기존 build_excel_save_path 호출 대신:
+        save_base = os.path.join(selected_folder, "scanlist.xlsx")
+        save_path = get_next_versioned_filename(save_base)
+        #  엑셀로 저장 (썸네일 포함)
+        save_to_excel_with_thumbnails(data_list, save_path)
+        print(f" 엑셀 저장 완료: {save_path}")
 
     def on_collect(self):
         if not self.folder_path:
@@ -227,7 +262,7 @@ class Controller:
             # )
             project = self.get_selected_project()
             if not project:
-                print("❌ 프로젝트가 선택되지 않았습니다.")
+                print(" 프로젝트가 선택되지 않았습니다.")
                 return
 
             base_dir = f"/home/rapa/show/{project['name']}"
@@ -283,70 +318,60 @@ class Controller:
                     max_frames=10
                 )
 
-                print(f"  MP4     : {'✅' if mp4_ok else '❌'} → {mp4_path}")
-                print(f"  WebM    : {'✅' if webm_ok else '❌'} → {webm_path}")
-                print(f"  Montage : {'✅' if montage_ok else '❌'} → {montage_path}")
+                print(f"  MP4     : {'O' if mp4_ok else 'X'} → {mp4_path}")
+                print(f"  WebM    : {'O' if webm_ok else 'X'} → {webm_path}")
+                print(f"  Montage : {'O' if montage_ok else 'X'} → {montage_path}")
             else:
                 print(f" {shot} → 변환할 MOV/MP4/EXR 파일이 org 폴더에 없습니다.")
 
-
-    # 샷그리드
+        # 샷그리드
 
     def on_register_to_shotgrid(self):
 
-        #  Step 1: 엑셀 파일 선택
-        excel_path, _ = QFileDialog.getOpenFileName(
-            self.main_window,
-            "등록할 엑셀 파일 선택",
-            "/home/rapa/show/serin_converter",
-            "Excel Files (*.xlsx)"
-        )
-        if not excel_path:
-            print(" 엑셀 파일 선택 취소됨")
-            return
 
-        #  Step 2: 엑셀 로드
-        data_list = load_excel_data(excel_path)
-        sg = connect_to_shotgrid()
-
-        # # 프로젝트 선택은 미리 선택한 UI 필드에서 가져오도록 처리하거나 고정값
+        # 프로젝트 선택
         project = self.get_selected_project()
         if not project:
-            print("❌ 프로젝트가 선택되지 않았습니다.")
+            QMessageBox.warning(self.main_window, "오류", "프로젝트가 선택되지 않았습니다.")
             return
         project_name = project["name"]
-        print(f"✅ 선택된 프로젝트: {project_name}")
 
-        # Step3 : 엑셀 데이터 로드
+        # 샷 폴더 선택
+        scan_root = f"/home/rapa/show/{project_name}/product/scan"
+        selected_folder = QFileDialog.getExistingDirectory(
+            self.main_window,
+            "샷 폴더 선택 (scanlist 있는 폴더)",
+            scan_root
+        )
+
+        if not selected_folder:
+            print(" 폴더 선택이 취소되었습니다.")
+            return
+
+        #  선택한 폴더에서 scanlist 엑셀 자동 찾기
+        excel_files = [f for f in os.listdir(selected_folder) if f.startswith("scanlist") and f.endswith(".xlsx")]
+        if not excel_files:
+            QMessageBox.warning(self.main_window, "오류", "선택한 폴더에 scanlist 엑셀이 없습니다.")
+            return
+
+        #  가장 최신 버전 엑셀 사용
+        excel_files.sort()
+        excel_path = os.path.join(selected_folder, excel_files[-1])
+
+        print(f" 선택된 엑셀 파일: {excel_path}")
+
+        # 엑셀 로딩 후 ShotGrid 업로드 (기존 코드 흐름 사용)
         data_list = load_excel_data(excel_path)
         sg = connect_to_shotgrid()
-        
-        # for data in data_list:
-        #     shot_name = data["Shot Name"]
-        #     version = data["Version"]
-        #     path = data["Path"]
-        #     type_ = data["Type"]
-        #     mp4_path = os.path.join(path, f"{shot_name}_plate_{version}.mp4")
-            
-        #     montage_dir = os.path.join(path, "montage")
-        #     # thumbnail_path = data["Thumbnail"]
-        #     thumbnail_path = data.get("Thumbnail Path", "")
-
-        #     project, shot = find_shot(sg, project_name, shot_name)
-        #     if not shot:
-        #         shot = create_shot(sg, project, shot_name, thumbnail_path)
-
-        #     create_version(sg, project, shot, version, mp4_path, thumbnail_path)
-
         for data in data_list:
             shot_name = data["Shot Name"]
             version = data["Version"]
             type_ = data["Type"]
 
-            # ✅ 현재 선택된 프로젝트 기준으로 직접 경로 재구성
+            # 현재 선택된 프로젝트 기준으로 직접 경로 재구성
             selected_project = self.get_selected_project()
             if not selected_project:
-                print("❌ 프로젝트가 선택되지 않았습니다.")
+                print("X 프로젝트가 선택되지 않았습니다.")
                 return
             project_name = selected_project["name"]
 
@@ -372,6 +397,7 @@ class Controller:
                 webm_path=webm_path,
                 montage_path=montage_path
             )
+
 
     
     #UI 내 프로젝트 선택함수
@@ -423,7 +449,7 @@ class Controller:
 
         selected_project = self.get_selected_project()
         if not selected_project:
-            print("❌ 프로젝트가 선택되지 않았습니다.")
+            print("X 프로젝트가 선택되지 않았습니다.")
             return
         
     # 모든 체크박스 선택 / 해제
@@ -453,3 +479,10 @@ class Controller:
             print(f"❎ 전체 해제됨")
 
         self.select_all_checked = new_state
+
+    def update_project_label(self, project_name):
+        if project_name:
+            self.main_window.project_label.setText(f"🔘 선택된 프로젝트: {project_name}")
+        else:
+            self.main_window.project_label.setText("🛑 선택된 프로젝트: 없음")
+
